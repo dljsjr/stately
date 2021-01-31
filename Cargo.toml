@@ -1,0 +1,17 @@
+[package]
+authors = ["Doug Stephen <dstephen@oxefit.com>"]
+edition = "2018"
+name = "stately"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["std"]
+# enable support for the standard library
+std = ["ahash"]
+
+[dependencies]
+ahash = {optional = true, version = "0.7"}
+hash32 = "0.1"
+heapless = "0.5"
+log = "0.4"

@@ -6,7 +6,6 @@ pub mod machine {
     use crate::{
         sync::{
             state::{State, StateKey},
-            timing::MonotonicTimestamp,
             transition::TransitionCondition,
         },
         StateMachineError, StateMachineSetupResult,
@@ -26,7 +25,7 @@ pub mod machine {
             heapless::consts::U32,
         >,
         states: FnvIndexMap<Key, DynState<'a, Context, Key>, heapless::consts::U32>,
-        current_state_start_time: MonotonicTimestamp,
+        current_state_start_time: u128,
         first_tick: bool,
         user_requested_state: Option<Key>,
     }
@@ -133,11 +132,7 @@ pub mod machine {
             Ok(())
         }
 
-        pub fn check_transition_and_do_action(
-            &mut self,
-            context: &mut Context,
-            time_nanos: MonotonicTimestamp,
-        ) {
+        pub fn check_transition_and_do_action(&mut self, context: &mut Context, time_nanos: u128) {
             let mut current_state = self.states.get_mut(&self.current_state).unwrap();
             let mut time_in_state =
                 Duration::from_nanos((time_nanos - self.current_state_start_time) as u64);

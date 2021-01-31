@@ -1,7 +1,5 @@
 use std::time::Duration;
 
-use super::timing::MonotonicTimestamp;
-
 pub trait StateKey: AsRef<str> + Copy + PartialEq + Eq + std::hash::Hash + std::fmt::Debug {}
 
 impl<T> StateKey for T where
@@ -15,7 +13,7 @@ where
 {
     fn state_key(&self) -> Key;
 
-    fn on_enter(&mut self, _context: &mut Context, _timestamp_nanos: MonotonicTimestamp) {
+    fn on_enter(&mut self, _context: &mut Context, _timestamp_nanos: u128) {
         if log::log_enabled!(log::Level::Trace) {
             log::trace!("{} on_enter", self.state_key().as_ref());
         }
@@ -24,7 +22,7 @@ where
     fn on_exit(
         &mut self,
         _context: &mut Context,
-        _timestamp_nanos: MonotonicTimestamp,
+        _timestamp_nanos: u128,
         _time_in_state: Duration,
     ) {
         if log::log_enabled!(log::Level::Trace) {
@@ -35,7 +33,7 @@ where
     fn do_state_action(
         &mut self,
         _context: &mut Context,
-        _timestamp_nanos: MonotonicTimestamp,
+        _timestamp_nanos: u128,
         _time_in_state: Duration,
     ) {
         if log::log_enabled!(log::Level::Trace) {

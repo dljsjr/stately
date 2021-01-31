@@ -7,7 +7,6 @@ pub mod machine {
     use crate::{
         sync::{
             state::{State, StateKey},
-            timing::MonotonicTimestamp,
             transition::TransitionCondition,
         },
         StateMachineError, StateMachineSetupResult,
@@ -21,7 +20,7 @@ pub mod machine {
         current_state: Key,
         transitions: HashMap<Key, Vec<TransitionCondition<Context, Key>>, ahash::RandomState>,
         states: HashMap<Key, Box<dyn State<Context, Key>>, ahash::RandomState>,
-        current_state_start_time: MonotonicTimestamp,
+        current_state_start_time: u128,
         first_tick: bool,
         user_requested_state: Option<Key>,
     }
@@ -118,11 +117,7 @@ pub mod machine {
             self.states.get(&self.current_state).unwrap().state_key()
         }
 
-        pub fn check_transition_and_do_action(
-            &mut self,
-            context: &mut Context,
-            time_nanos: MonotonicTimestamp,
-        ) {
+        pub fn check_transition_and_do_action(&mut self, context: &mut Context, time_nanos: u128) {
             let mut current_state = self.states.get_mut(&self.current_state).unwrap();
             let mut time_in_state =
                 Duration::from_nanos((time_nanos - self.current_state_start_time) as u64);

@@ -19,10 +19,12 @@ extern crate alloc;
 #[macro_use]
 extern crate core as std;
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum StateMachineError {
     StateAlreadyRegistered,
     TransitionStartStateNotRegistered,
     StackAllocationError,
+    StackBufferFull,
 }
 
 pub type StateMachineSetupResult<T> = std::result::Result<T, StateMachineError>;

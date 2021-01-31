@@ -1,7 +1,6 @@
 pub mod machine {
     use core::time::Duration;
 
-    use heapless::consts::*;
     use heapless::{FnvIndexMap, Vec};
 
     use crate::{
@@ -17,12 +16,16 @@ pub mod machine {
 
     pub struct StateMachine<'a, Context, Key>
     where
-        Key: StateKey,
+        Key: StateKey + hash32::Hash,
     {
         initial_state: Key,
         current_state: Key,
-        transitions: FnvIndexMap<Key, Vec<TransitionCondition<Context, Key>, U32>, U32>,
-        states: FnvIndexMap<Key, DynState<'a, Context, Key>, U32>,
+        transitions: FnvIndexMap<
+            Key,
+            Vec<TransitionCondition<Context, Key>, heapless::consts::U32>,
+            heapless::consts::U32,
+        >,
+        states: FnvIndexMap<Key, DynState<'a, Context, Key>, heapless::consts::U32>,
         current_state_start_time: MonotonicTimestamp,
         first_tick: bool,
         user_requested_state: Option<Key>,
@@ -30,17 +33,19 @@ pub mod machine {
 
     impl<'a, Context, Key> StateMachine<'a, Context, Key>
     where
-        Key: StateKey,
+        Key: StateKey + hash32::Hash,
     {
         pub fn new_state_machine(
             initial_state: DynState<'a, Context, Key>,
         ) -> StateMachine<'a, Context, Key> {
-            let mut states: FnvIndexMap<Key, DynState<'a, Context, Key>, U32> =
+            let mut states: FnvIndexMap<Key, DynState<'a, Context, Key>, heapless::consts::U32> =
                 FnvIndexMap::default();
 
             let state_key = initial_state.state_key();
 
-            states.insert(state_key, initial_state).unwrap();
+            if states.insert(state_key, initial_state).is_err() {
+                panic!("State machine creation failed pushing initial state in to what should be an empty pre-allocated buffer. Something is very wrong.");
+            }
 
             let current_state_start_time = 0;
             let current_state = state_key;
@@ -79,7 +84,9 @@ pub mod machine {
             let key = state_to_add.state_key();
 
             if !self.states.contains_key(&key) {
-                self.states.insert(key, state_to_add).unwrap();
+                if self.states.insert(key, state_to_add).is_err() {
+                    return Err(StateMachineError::StackBufferFull);
+                }
 
                 Ok(())
             } else {

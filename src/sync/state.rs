@@ -2,12 +2,14 @@ use std::time::Duration;
 
 use super::timing::MonotonicTimestamp;
 
-pub trait StateKey:
-    AsRef<str> + Copy + PartialEq + Eq + hash32::Hash + std::hash::Hash + std::fmt::Debug
+pub trait StateKey: AsRef<str> + Copy + PartialEq + Eq + std::hash::Hash + std::fmt::Debug {}
+
+impl<T> StateKey for T where
+    T: AsRef<str> + Copy + PartialEq + Eq + std::hash::Hash + std::fmt::Debug
 {
 }
 
-pub trait State<Context, Key>: std::fmt::Debug
+pub trait State<Context, Key>
 where
     Key: StateKey,
 {

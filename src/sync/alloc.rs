@@ -5,11 +5,8 @@ pub mod machine {
     use std::collections::{hash_map::Entry, HashMap};
 
     use crate::{
-        sync::{
-            state::{State, StateKey},
-            transition::TransitionCondition,
-        },
-        StateMachineError, StateMachineSetupResult,
+        sync::{state::State, transition::TransitionCondition},
+        StateKey, StateMachineError, StateMachineSetupResult,
     };
 
     pub struct StateMachine<Context, Key>
@@ -69,14 +66,14 @@ pub mod machine {
             self.user_requested_state = Some(requested_state);
         }
 
-        pub fn add_state<S>(&mut self, state_to_add: S) -> StateMachineSetupResult<()>
+        pub fn add_state<S>(&mut self, state_to_add: S) -> StateMachineSetupResult<(), Key>
         where
             S: State<Context, Key> + 'static,
         {
             let key = state_to_add.state_key();
 
             match self.states.entry(key) {
-                Entry::Occupied(_) => Err(StateMachineError::StateAlreadyRegistered),
+                Entry::Occupied(_) => Err(StateMachineError::StateAlreadyRegistered(key)),
                 Entry::Vacant(entry) => {
                     entry.insert(Box::new(state_to_add));
                     Ok(())
@@ -88,7 +85,7 @@ pub mod machine {
             &mut self,
             from: &[Key],
             transition: TransitionCondition<Context, Key>,
-        ) -> StateMachineSetupResult<()> {
+        ) -> StateMachineSetupResult<(), Key> {
             for from in from.iter() {
                 self.add_transition_condition(*from, transition)?;
             }
@@ -100,7 +97,7 @@ pub mod machine {
             &mut self,
             from: Key,
             transition: TransitionCondition<Context, Key>,
-        ) -> StateMachineSetupResult<()> {
+        ) -> StateMachineSetupResult<(), Key> {
             if self.states.contains_key(&from) {
                 let transitions = self
                     .transitions
@@ -109,7 +106,7 @@ pub mod machine {
                 transitions.push(transition);
                 Ok(())
             } else {
-                Err(StateMachineError::TransitionStartStateNotRegistered)
+                Err(StateMachineError::TransitionStartStateNotRegistered(from))
             }
         }
 

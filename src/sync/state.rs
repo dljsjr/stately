@@ -1,11 +1,6 @@
 use std::time::Duration;
 
-pub trait StateKey: AsRef<str> + Copy + PartialEq + Eq + std::hash::Hash + std::fmt::Debug {}
-
-impl<T> StateKey for T where
-    T: AsRef<str> + Copy + PartialEq + Eq + std::hash::Hash + std::fmt::Debug
-{
-}
+use crate::StateKey;
 
 pub trait State<Context, Key>
 where

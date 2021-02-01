@@ -4,11 +4,8 @@ pub mod machine {
     use heapless::{FnvIndexMap, Vec};
 
     use crate::{
-        sync::{
-            state::{State, StateKey},
-            transition::TransitionCondition,
-        },
-        StateMachineError, StateMachineSetupResult,
+        sync::{state::State, transition::TransitionCondition},
+        StateKey, StateMachineError, StateMachineSetupResult,
     };
 
     type DynState<'a, Context, Key> = &'a mut (dyn State<Context, Key> + 'static);
@@ -79,7 +76,7 @@ pub mod machine {
         pub fn add_state(
             &mut self,
             state_to_add: DynState<'a, Context, Key>,
-        ) -> StateMachineSetupResult<()> {
+        ) -> StateMachineSetupResult<(), Key> {
             let key = state_to_add.state_key();
 
             if !self.states.contains_key(&key) {
@@ -89,7 +86,7 @@ pub mod machine {
 
                 Ok(())
             } else {
-                Err(StateMachineError::StateAlreadyRegistered)
+                Err(StateMachineError::StateAlreadyRegistered(key))
             }
         }
 
@@ -101,7 +98,7 @@ pub mod machine {
             &mut self,
             from: Key,
             transition: TransitionCondition<Context, Key>,
-        ) -> StateMachineSetupResult<()> {
+        ) -> StateMachineSetupResult<(), Key> {
             if self.states.contains_key(&from) {
                 if !self.transitions.contains_key(&from)
                     && self.transitions.insert(from, Vec::new()).is_err()
@@ -116,7 +113,7 @@ pub mod machine {
 
                 Ok(())
             } else {
-                Err(StateMachineError::TransitionStartStateNotRegistered)
+                Err(StateMachineError::TransitionStartStateNotRegistered(from))
             }
         }
 
@@ -124,7 +121,7 @@ pub mod machine {
             &mut self,
             from: &[Key],
             transition: TransitionCondition<Context, Key>,
-        ) -> StateMachineSetupResult<()> {
+        ) -> StateMachineSetupResult<(), Key> {
             for from in from.iter() {
                 self.add_transition_condition(*from, transition)?;
             }

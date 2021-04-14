@@ -1,3 +1,4 @@
+#![deny(warnings)]
 // Declaring our library as `no-std` unconditionally lets us be consistent
 // in how we `use` items from `std` or `core`
 #![no_std]

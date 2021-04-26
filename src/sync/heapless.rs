@@ -5,7 +5,7 @@ pub mod machine {
 
     use crate::{
         sync::{state::State, transition::TransitionCondition},
-        StateKey, StateMachineError, StateMachineSetupResult,
+        StateKey, StateMachineError, StateMachineResult,
     };
 
     type DynState<'a, Context, Key> = &'a mut (dyn State<Context, Key> + 'static);
@@ -58,15 +58,21 @@ pub mod machine {
         }
 
         pub fn reset(&mut self, context: &mut Context, time_nanos: u128) {
-            let current_state = self.states.get_mut(&self.current_state).unwrap();
-            let time_in_state =
-                Duration::from_nanos((time_nanos - self.current_state_start_time) as u64);
+            if let Some(current_state) = self.states.get_mut(&self.current_state) {
+                let time_in_state =
+                    Duration::from_nanos((time_nanos - self.current_state_start_time) as u64);
 
-            current_state.on_exit(context, time_nanos, time_in_state);
+                current_state.on_exit(context, time_nanos, time_in_state);
 
-            self.current_state_start_time = time_nanos;
-            self.current_state = self.initial_state;
-            self.first_tick = true;
+                self.current_state_start_time = time_nanos;
+                self.current_state = self.initial_state;
+                self.first_tick = true;
+            } else {
+                log::warn!(
+                    "State missing from states hashmap for Current State state key {}",
+                    &self.current_state.as_ref()
+                );
+            }
         }
 
         pub fn request_transition_from_user(&mut self, requested_state: Key) {
@@ -76,7 +82,7 @@ pub mod machine {
         pub fn add_state(
             &mut self,
             state_to_add: DynState<'a, Context, Key>,
-        ) -> StateMachineSetupResult<(), Key> {
+        ) -> StateMachineResult<(), Key> {
             let key = state_to_add.state_key();
 
             if !self.states.contains_key(&key) {
@@ -98,7 +104,7 @@ pub mod machine {
             &mut self,
             from: Key,
             transition: TransitionCondition<Context, Key>,
-        ) -> StateMachineSetupResult<(), Key> {
+        ) -> StateMachineResult<(), Key> {
             if self.states.contains_key(&from) {
                 if !self.transitions.contains_key(&from)
                     && self.transitions.insert(from, Vec::new()).is_err()
@@ -106,12 +112,14 @@ pub mod machine {
                     return Err(StateMachineError::StackAllocationError);
                 }
 
-                let transitions = self.transitions.get_mut(&from).unwrap();
-                if transitions.push(transition).is_err() {
-                    return Err(StateMachineError::StackAllocationError);
+                if let Some(transitions) = self.transitions.get_mut(&from) {
+                    if transitions.push(transition).is_err() {
+                        return Err(StateMachineError::StackAllocationError);
+                    }
+                    Ok(())
+                } else {
+                    Err(StateMachineError::HashMapMiss)
                 }
-
-                Ok(())
             } else {
                 Err(StateMachineError::TransitionStartStateNotRegistered(from))
             }
@@ -121,7 +129,7 @@ pub mod machine {
             &mut self,
             from: &[Key],
             transition: TransitionCondition<Context, Key>,
-        ) -> StateMachineSetupResult<(), Key> {
+        ) -> StateMachineResult<(), Key> {
             for from in from.iter() {
                 self.add_transition_condition(*from, transition)?;
             }
@@ -129,17 +137,29 @@ pub mod machine {
             Ok(())
         }
 
-        pub fn check_transition_and_do_action(&mut self, context: &mut Context, time_nanos: u128) {
-            let mut current_state = self.states.get_mut(&self.current_state).unwrap();
+        pub fn check_transition_and_do_action(
+            &mut self,
+            context: &mut Context,
+            time_nanos: u128,
+        ) -> StateMachineResult<(), Key> {
             let mut time_in_state =
                 Duration::from_nanos((time_nanos - self.current_state_start_time) as u64);
 
             if self.first_tick {
-                current_state.on_enter(context, time_nanos);
-                self.first_tick = false;
+                if let Some(current_state) = self.states.get_mut(&self.current_state) {
+                    current_state.on_enter(context, time_nanos);
+                    self.first_tick = false;
+                } else {
+                    return Err(StateMachineError::HashMapMiss);
+                }
             }
 
             let requested_state = self.user_requested_state.take();
+
+            let mut current_state = self
+                .states
+                .get_mut(&self.current_state)
+                .ok_or(StateMachineError::HashMapMiss)?;
 
             if let Some(transitions) = self.transitions.get_mut(&self.current_state) {
                 for transition in transitions.iter_mut() {
@@ -151,9 +171,12 @@ pub mod machine {
                         self.current_state_start_time = time_nanos;
                         self.current_state = new_state;
 
-                        current_state = self.states.get_mut(&new_state).unwrap();
-                        time_in_state = Duration::from_nanos(0);
+                        current_state = self
+                            .states
+                            .get_mut(&new_state)
+                            .ok_or(StateMachineError::HashMapMiss)?;
 
+                        time_in_state = Duration::from_nanos(0);
                         current_state.on_enter(context, time_nanos);
 
                         break;
@@ -162,6 +185,8 @@ pub mod machine {
             }
 
             current_state.do_state_action(context, time_nanos, time_in_state);
+
+            Ok(())
         }
     }
 }

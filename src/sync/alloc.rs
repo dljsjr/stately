@@ -6,7 +6,7 @@ pub mod machine {
 
     use crate::{
         sync::{state::State, transition::TransitionCondition},
-        StateKey, StateMachineError, StateMachineSetupResult,
+        StateKey, StateMachineError, StateMachineResult,
     };
 
     pub struct StateMachine<Context, Key>
@@ -66,7 +66,7 @@ pub mod machine {
             self.user_requested_state = Some(requested_state);
         }
 
-        pub fn add_state<S>(&mut self, state_to_add: S) -> StateMachineSetupResult<(), Key>
+        pub fn add_state<S>(&mut self, state_to_add: S) -> StateMachineResult<(), Key>
         where
             S: State<Context, Key> + 'static,
         {
@@ -85,7 +85,7 @@ pub mod machine {
             &mut self,
             from: &[Key],
             transition: TransitionCondition<Context, Key>,
-        ) -> StateMachineSetupResult<(), Key> {
+        ) -> StateMachineResult<(), Key> {
             for from in from.iter() {
                 self.add_transition_condition(*from, transition)?;
             }
@@ -97,7 +97,7 @@ pub mod machine {
             &mut self,
             from: Key,
             transition: TransitionCondition<Context, Key>,
-        ) -> StateMachineSetupResult<(), Key> {
+        ) -> StateMachineResult<(), Key> {
             if self.states.contains_key(&from) {
                 let transitions = self
                     .transitions

@@ -11,8 +11,8 @@ default = ["std"]
 std = ["ahash"]
 
 [dependencies]
-ahash = {optional = true, version = "0.7"}
-hash32 = "0.1"
-heapless = "0.5"
-log = "0.4"
+ahash = {optional = true, version = "0.7"} 
+hash32 = "0.1" # stay at 0.1, heapless is still on 0.1
+heapless = "0.6" 
+log = "0.4" 
 thiserror = "1.0"

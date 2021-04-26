@@ -43,8 +43,10 @@ where
     StackAllocationError,
     #[error("Tried to add to a stack buffer that is full")]
     StackBufferFull,
+    #[error("Could not retrieve an entry from a map even though key presence checks succeeded")]
+    HashMapMiss,
 }
 
-pub type StateMachineSetupResult<T, K> = std::result::Result<T, StateMachineError<K>>;
+pub type StateMachineResult<T, K> = std::result::Result<T, StateMachineError<K>>;
 
 pub mod sync;

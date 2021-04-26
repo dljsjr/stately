@@ -51,15 +51,18 @@ pub mod machine {
         }
 
         pub fn reset(&mut self, context: &mut Context, time_nanos: u128) {
-            let current_state = self.states.get_mut(&self.current_state).unwrap();
-            let time_in_state =
-                Duration::from_nanos((time_nanos - self.current_state_start_time) as u64);
+            if let Some(current_state) = self.states.get_mut(&self.current_state) {
+                let time_in_state =
+                    Duration::from_nanos((time_nanos - self.current_state_start_time) as u64);
 
-            current_state.on_exit(context, time_nanos, time_in_state);
+                current_state.on_exit(context, time_nanos, time_in_state);
 
-            self.current_state_start_time = time_nanos;
-            self.current_state = self.initial_state;
-            self.first_tick = true;
+                self.current_state_start_time = time_nanos;
+                self.current_state = self.initial_state;
+                self.first_tick = true;
+            } else {
+                log::error!("Couldn't reset state machine, states map has lost mapping for current state {}", self.current_state.as_ref())
+            }
         }
 
         pub fn request_transition_from_user(&mut self, requested_state: Key) {
@@ -111,11 +114,18 @@ pub mod machine {
         }
 
         pub fn current_state(&self) -> Key {
-            self.states.get(&self.current_state).unwrap().state_key()
+            self.current_state
         }
 
-        pub fn check_transition_and_do_action(&mut self, context: &mut Context, time_nanos: u128) {
-            let mut current_state = self.states.get_mut(&self.current_state).unwrap();
+        pub fn check_transition_and_do_action(
+            &mut self,
+            context: &mut Context,
+            time_nanos: u128,
+        ) -> StateMachineResult<(), Key> {
+            let mut current_state = self
+                .states
+                .get_mut(&self.current_state)
+                .ok_or(StateMachineError::HashMapMiss)?;
             let mut time_in_state =
                 Duration::from_nanos((time_nanos - self.current_state_start_time) as u64);
 
@@ -136,7 +146,10 @@ pub mod machine {
                         self.current_state_start_time = time_nanos;
                         self.current_state = new_state;
 
-                        current_state = self.states.get_mut(&new_state).unwrap();
+                        current_state = self
+                            .states
+                            .get_mut(&new_state)
+                            .ok_or(StateMachineError::HashMapMiss)?;
                         time_in_state = Duration::from_nanos(0);
 
                         current_state.on_enter(context, time_nanos);
@@ -147,6 +160,8 @@ pub mod machine {
             }
 
             current_state.do_state_action(context, time_nanos, time_in_state);
+
+            Ok(())
         }
     }
 }

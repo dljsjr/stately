@@ -43,7 +43,7 @@ where
     StackAllocationError,
     #[error("Tried to add to a stack buffer that is full")]
     StackBufferFull,
-    #[error("Could not retrieve an entry from a map even though key presence checks succeeded")]
+    #[error("Could not retrieve an entry from a map even though key presence checks succeeded, something has gone very wrong")]
     HashMapMiss,
 }
 

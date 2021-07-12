@@ -10,7 +10,13 @@ pub mod machine {
 
     type DynState<'a, Context, Key> = &'a mut (dyn State<Context, Key> + 'static);
 
-    pub struct StateMachine<'a, Context, Key>
+    pub struct StateMachine<
+        'a,
+        Context,
+        Key,
+        const NUM_STATES: usize,
+        const MAX_TRANSITIONS_PER_STATE: usize,
+    >
     where
         Key: StateKey + hash32::Hash,
     {
@@ -18,23 +24,24 @@ pub mod machine {
         current_state: Key,
         transitions: FnvIndexMap<
             Key,
-            Vec<TransitionCondition<Context, Key>, heapless::consts::U32>,
-            heapless::consts::U32,
+            Vec<TransitionCondition<Context, Key>, MAX_TRANSITIONS_PER_STATE>,
+            NUM_STATES,
         >,
-        states: FnvIndexMap<Key, DynState<'a, Context, Key>, heapless::consts::U32>,
+        states: FnvIndexMap<Key, DynState<'a, Context, Key>, NUM_STATES>,
         current_state_start_time: u128,
         first_tick: bool,
         user_requested_state: Option<Key>,
     }
 
-    impl<'a, Context, Key> StateMachine<'a, Context, Key>
+    impl<'a, Context, Key, const NUM_STATES: usize, const MAX_TRANSITIONS_PER_STATE: usize>
+        StateMachine<'a, Context, Key, NUM_STATES, MAX_TRANSITIONS_PER_STATE>
     where
         Key: StateKey + hash32::Hash,
     {
         pub fn new_state_machine(
             initial_state: DynState<'a, Context, Key>,
-        ) -> StateMachine<'a, Context, Key> {
-            let mut states: FnvIndexMap<Key, DynState<'a, Context, Key>, heapless::consts::U32> =
+        ) -> StateMachine<'a, Context, Key, NUM_STATES, MAX_TRANSITIONS_PER_STATE> {
+            let mut states: FnvIndexMap<Key, DynState<'a, Context, Key>, NUM_STATES> =
                 FnvIndexMap::default();
 
             let state_key = initial_state.state_key();

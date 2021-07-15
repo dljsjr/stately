@@ -20,6 +20,14 @@ Stately **_DOES NOT_** do things like make sure all of your states are reachable
 
 What Stately **_DOES_** do is give you a way for writing highly encapsulated states with encapsulated transition conditions. A state takes only its own local state and the shared system state (called the `Context`) as inputs for its actions and the transition conditions similarly take only the `Context` as their inputs for determining if a transition is valid. States are implemented by adhering to traits defined in the crate. Stately also provides some nice tools for the caller to provide time signals to simplify time-based transition and action logic.
 
+## What's up w/ the u128 time arguments for the update functions?
+
+As mentioned above the context in which this design was first established at IHMC was done in the context of digital feedback loops for control systems; these loops are nearly [hard real-time](https://en.wikipedia.org/wiki/Real-time_computing) feedback loops. Timing for these loops when they aren't done bare metal is typically built on top of an OS's high resolution monotonic clock rather than the wall clock. This is because the wall clock can skew backwards or forward in time arbitrarily due to many reasons; user timezone adjustment, daylight saving time, NTP corrections, etc.
+
+High resolution monotonic clocks typically report their values using C-style `timespec`-adjacent structs w/ a Seconds and Nanoseconds field (e.g. `Duration` in Rust), or they use cumulative nanoseconds encoded in an unsigned 64 bit type.
+
+So why `u128`? Because the easiest way to get a high resolution monotonic clock in Rust is via creating a long-lived `Instant` via `std::time::Instant::now()` and then calling `Instant::elapsed().as_nanos()` which returns a `u128`.
+
 ## `no_std`
 
 By default, `stately` leverages the Rust standard library. Stately uses dynamic dispatch for both states and their transition conditions. In the default configuration this is achieved by storing `Vec`'s and `HashMap`'s of [`Box`'ed Trait Objects](https://doc.rust-lang.org/book/ch17-02-trait-objects.html) for the concrete state implementations and their transition conditions in the main state machine struct. All of the relevant implementations for this configuration can be found in the `stately::sync::alloc` module.
